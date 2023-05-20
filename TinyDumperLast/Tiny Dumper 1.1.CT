@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="18">
+  <Forms>
+    <frmTinyDumper Class="TCEForm" Encoding="Ascii85">b)2Al)m*u7hqlsEAh-$MOq_0WHyc1:vc]i[+z6]O5K1*0cqsH,n9z2b:?b]#fQdIxUi:IGLQl;xZ4nlG]37eCeDC^y*87U^v(nVKoH;JQ%EJ0R3uh$S[R{y1W)=t.;sT,{09mfMeo?kAG{gbBo[ruaU,Hg4*gEO(u-gTVl4?.E,-/?kyn]r3+[O,/0hrc2:?T!YOVjaUPH0p/mu.{;gFiU}JWM?23DPBrF7QVD+S;6jt}mjLh!@dv;UZAVn$Uzun%RhHACfhvu[N_?neRzL/@fcYC7cbtIRsW#,dEg/o6M9{m!7nyvZRd*fen_YYysHweFjPLx.pWgU@[IR%tA.eHt-3rtMX2rQi:USIsDlU-pKO$Db#rLv5ZAS#ta@K+:l7EdaSgglui$ob}2@iLaFVNuYi3K/+};_$d=NF^17=KkWe6-Blv/DEQuH:!@t,B*8Kyz+s4eor_n.!uwPR4jc*7e*gIMUWtug1cYRMo=?mB91,]u7E!OgCwGpZabT8$cMzwq*cT@4@bLRQ)V+f!I@am:EFyv]-9EqE@Sl9QxbcAe}t]ORz4@NAg)yT6mc9!$}9shgI$0hq#d=)o@IvYnW1h9__os{0Y!F,KHJUURB(@V3dhi2Nvvb}pQoEUyriP^[vpJ(6rDJ/8dWgL2uw+,:HbbD5G]:[r,Syt))k{ui=uj0@ni$]7vMULpy8:c}f;J(n^0ep{;63/?</frmTinyDumper>
+  </Forms>
+  <CheatEntries>
+    <CheatEntry>
+      <ID>0</ID>
+      <Description>"No description"</Description>
+      <LastState Value="1000" Activated="0" RealAddress="0045B5A4"/>
+      <Color>80000008</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>test.exe+5B5A4</Address>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+  <LuaScript>--Author: MasterGH, 03.01.2015, Gamehacklab[RU] (http://gamehacklab.ru)
+
+--frmTinyDumper  = createFormFromFile(getCheatEngineDir().."\\autorun\\frmTinyDumper.xml")
+frmTinyDumper.Caption = 'Tiny Dumper [CE Lua Plugin, ver 1.1]'
+
+if(frmTinyDumper == nil) then
+	messageDialog('Can not find frmTinyDumper', mtError, mbOK)
+	return
+end
+
+
+function OnClickMenuItemDT()
+	frmTinyDumper.Show()
+end
+
+local menuItems = getMemoryViewForm().findComponentByName('MainMenu1').Items
+local count = menuItems.Count - 1
+
+for i = 0, count do
+	local item = menuItems.getItem(i)
+	if(item.Caption == 'Tools') then
+		local mi = createMenuItem(popupmenu)
+		menuItem_setCaption(mi, '* TinyDumper [Plugin]')
+		menuItem_onClick(mi, OnClickMenuItemDT)
+		item.add(mi)
+		break
+	end
+end
+
+function CEButtonDumpClick(sender)
+print('CEButtonDumpClick')
+	if (getOpenedProcessID() == 0) then
+		messageDialog('No target any process', mtError, mbOK)
+		return
+	end
+
+	local userSizeMem = frmTinyDumper.CEEditSize.Text
+	local userAddress = frmTinyDumper.CEEditAddress.Text
+	local userRegisterSymbol = frmTinyDumper.CEEditRegisterSymbol.Text
+
+	if (userSizeMem == '') then
+		messageDialog('UserSizeMem &lt;= 0', mtError, mbOK)
+		return
+	end
+
+	if (address == '') then
+		messageDialog('UserAddress is empty', mtError, mbOK)
+		return
+	end
+
+	if (registerSymbol == '') then
+		messageDialog('UserRegisterSymbol is empty', mtError, mbOK)
+		return
+	end
+
+	local strings = frmTinyDumper.CEListBoxSymbols.Items
+	local count = strings.Count - 1
+
+	for i = 0, count do
+		if(strings[i] == userRegisterSymbol) then
+			messageDialog('UserRegisterSymbol '..userRegisterSymbol..' is not unical', mtError, mbOK)
+			return
+		end
+	end
+
+	strings.add(userRegisterSymbol)
+
+	autoAssemble(string.format([[alloc(%s,%s)
+registersymbol(%s)
+%s:
+readmem(%s,%s)]], userRegisterSymbol, userSizeMem, userRegisterSymbol, userRegisterSymbol, userAddress, userSizeMem))
+
+end
+
+
+function OnClickCopySymbolToBuffer(sender)
+	local ceListBoxSymbols = frmTinyDumper.CEListBoxSymbols
+	local strings = ceListBoxSymbols.Items
+	local count = strings.Count - 1
+	local textBuffer = ''
+	for i = 0, count do
+	  if(ceListBoxSymbols.Selected[i]) then
+		textBuffer = textBuffer..string.format('%s', strings[i])
+		writeToClipboard(textBuffer)
+		return
+	  end
+	end
+end
+
+function OnClickRemove(sender)
+	local ceListBoxSymbols = frmTinyDumper.CEListBoxSymbols
+	local strings = ceListBoxSymbols.Items
+	local count = strings.Count - 1
+	local textBuffer = ''
+	for i = 0, count do
+	  if(ceListBoxSymbols.Selected[i]) then
+		local symbolName = string.format('%s', strings[i])
+		strings.delete(i)
+		autoAssemble(string.format([[
+dealloc(%s)
+unregistersymbol(%s)
+]], symbolName, symbolName))
+		return
+	  end
+	end
+end
+
+frmTinyDumper.CEButtonDump.OnClick = CEButtonDumpClick
+frmTinyDumper.PopupMenu1.Items[0].OnClick = OnClickCopySymbolToBuffer
+frmTinyDumper.PopupMenu1.Items[1].OnClick = OnClickRemove
+
+function CEListBoxSymbolsSelectionChange(sender, user)
+	local ceListBoxSymbols = frmTinyDumper.CEListBoxSymbols
+	local strings = ceListBoxSymbols.Items
+	local count = strings.Count - 1
+	local textBuffer = ''
+	for i = 0, count do
+	  if(ceListBoxSymbols.Selected[i]) then
+		textBuffer = textBuffer..string.format('%s', strings[i])
+		print(textBuffer)
+		return
+	  end
+	end
+end
+</LuaScript>
+</CheatTable>
